@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rentry.co Clone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Apply dark mode class ASAP to prevent FOUC
+    if (localStorage.getItem('darkMode') === 'true' || 
+        (!('darkMode' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    tailwind.config = {
+      darkMode: 'class', // or 'media'
+      // Other Tailwind configurations can go here
+    }
+  </script>
+  <style>
+    /* Styles for rendered markdown to match rentry.co look and feel where Tailwind might be verbose or need dynamic values */
+    .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+      font-weight: 600;
+      line-height: 1.25;
+      margin-top: 24px;
+      margin-bottom: 16px;
+    }
+    .markdown-body h1 { font-size: 2em; }
+    .markdown-body h2 { font-size: 1.5em; }
+    .markdown-body h3 { font-size: 1.25em; }
+    .markdown-body h4 { font-size: 1em; }
+    .markdown-body p { margin-bottom: 1rem; }
+    .markdown-body ul, .markdown-body ol { margin-bottom: 1rem; padding-left: 2em; }
+    .markdown-body li > ul, .markdown-body li > ol { margin-bottom: 0; }
+    .markdown-body blockquote {
+      margin-left: 0;
+      padding-left: 1em;
+      border-left: .25em solid #dfe2e5; /* Tailwind gray-200 */
+      color: #6a737d; /* Tailwind gray-500 */
+    }
+    .dark .markdown-body blockquote {
+      border-left-color: #4b5563; /* dark:border-gray-600 */
+      color: #d1d5db; /* dark:text-gray-300 */
+    }
+    .markdown-body code {
+      padding: .2em .4em;
+      margin: 0;
+      font-size: 85%;
+      background-color: rgba(27,31,35,.05);
+      border-radius: 3px;
+      font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+    .dark .markdown-body code {
+      background-color: rgba(200,200,220,.1); /* A light background for dark mode code */
+    }
+    .markdown-body pre {
+      padding: 16px;
+      overflow: auto;
+      font-size: 85%;
+      line-height: 1.45;
+      background-color: #f6f8fa; /* Tailwind gray-100 */
+      border-radius: 3px;
+      word-wrap: normal;
+    }
+    .dark .markdown-body pre {
+      background-color: #1f2937; /* dark:bg-gray-800 */
+    }
+    .markdown-body pre code {
+      display: inline;
+      padding: 0;
+      margin: 0;
+      overflow: visible;
+      line-height: inherit;
+      word-wrap: normal;
+      background-color: transparent;
+      border: 0;
+      font-size: 100%;
+    }
+    .markdown-body table {
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+      width: auto;
+    }
+    .markdown-body th, .markdown-body td {
+      border: 1px solid #e2e8f0; /* Tailwind gray-300 */
+      padding: 0.5rem 0.75rem;
+    }
+    .dark .markdown-body th, .dark .markdown-body td {
+      border-color: #4b5563; /* dark:border-gray-600 */
+    }
+    .markdown-body th {
+      font-weight: 600;
+      background-color: #f7fafc; /* Tailwind gray-100 */
+    }
+    .dark .markdown-body th {
+      background-color: #374151; /* dark:bg-gray-700 */
+    }
+    .markdown-body .spoiler {
+        background-color: #000;
+        color: #000;
+        padding: 0 0.2em;
+        border-radius: 3px;
+    }
+    .markdown-body .spoiler:hover, .markdown-body .spoiler:active, .markdown-body .spoiler:focus {
+        background-color: #374151; /* dark:bg-gray-700 or a slightly lighter dark color */
+        color: #f3f4f6; /* dark:text-gray-100 */
+    }
+    .dark .markdown-body .spoiler {
+        background-color: #d1d5db; /* A light color for dark mode spoiler background */
+        color: #d1d5db;
+    }
+    .dark .markdown-body .spoiler:hover, .dark .markdown-body .spoiler:active, .dark .markdown-body .spoiler:focus {
+      background-color: #4b5563; /* dark:bg-gray-600 */
+      color: #f3f4f6;
+    }
+
+    .markdown-body .md-center { text-align: center; display: block; }
+    .markdown-body .md-right { text-align: right; display: block; }
+    
+    .markdown-body .admonition {
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      border-left-width: 0.25rem;
+      border-left-style: solid;
+      border-radius: 0.25rem;
+    }
+    .markdown-body .admonition-title { font-weight: bold; margin-bottom: 0.25rem; }
+
+    .markdown-body .admonition.note { border-color: #22c55e; background-color: #f0fdf4; } 
+    .dark .markdown-body .admonition.note { border-color: #16a34a; background-color: #1c3d2e; color: #d1fae5; }
+    .markdown-body .admonition.note .admonition-title { color: #166534; }
+    .dark .markdown-body .admonition.note .admonition-title { color: #6ee7b7; }
+
+    .markdown-body .admonition.info { border-color: #3b82f6; background-color: #eff6ff; }
+    .dark .markdown-body .admonition.info { border-color: #2563eb; background-color: #1e3a8a; color: #bfdbfe;}
+    .markdown-body .admonition.info .admonition-title { color: #1e40af; }
+    .dark .markdown-body .admonition.info .admonition-title { color: #93c5fd; }
+
+    .markdown-body .admonition.warning { border-color: #f97316; background-color: #fff7ed; }
+    .dark .markdown-body .admonition.warning { border-color: #ea580c; background-color: #4d2c11; color: #fed7aa;}
+    .markdown-body .admonition.warning .admonition-title { color: #9a3412; }
+    .dark .markdown-body .admonition.warning .admonition-title { color: #fdba74; }
+
+    .markdown-body .admonition.danger { border-color: #ef4444; background-color: #fef2f2; }
+    .dark .markdown-body .admonition.danger { border-color: #dc2626; background-color: #5f2120; color: #fecaca;}
+    .markdown-body .admonition.danger .admonition-title { color: #991b1b; }
+    .dark .markdown-body .admonition.danger .admonition-title { color: #fca5a5; }
+    
+    .markdown-body .admonition.greentext > p { color: #22c55e !important; }
+    .dark .markdown-body .admonition.greentext > p { color: #4ade80 !important; }
+
+    .markdown-body .toc {
+      border: 1px solid #e2e8f0; padding: 1rem; margin-bottom: 1rem;
+      background-color: #f9fafb; border-radius: 0.25rem;
+    }
+    .dark .markdown-body .toc {
+      border-color: #4b5563; background-color: #1f2937;
+    }
+    .markdown-body .toc ol { list-style-type: decimal; padding-left: 1.5em; }
+    .markdown-body .toc ol ol { list-style-type: lower-alpha; }
+    .markdown-body .toc a { text-decoration: none; color: #2563eb; }
+    .dark .markdown-body .toc a { color: #60a5fa; }
+    .markdown-body .toc a:hover { text-decoration: underline; }
+    .markdown-body ul.task-list { list-style-type: none; padding-left: 0.5rem; }
+    .markdown-body ul.task-list li input[type="checkbox"] { margin-right: 0.5rem; }
+
+    /* Custom blocks */
+    .custom-block {
+      margin: 1rem 0;
+      padding: 1rem;
+      background-color: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+    }
+    .dark .custom-block {
+      background-color: #1f2937;
+      border-color: #374151;
+    }
+    .custom-block-2C {
+      background-color: #fef3c7;
+      border-color: #fbbf24;
+    }
+    .dark .custom-block-2C {
+      background-color: #451a03;
+      border-color: #f59e0b;
+    }
+
+    /* Basic scrollbar styling for a more consistent look */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-track { background: #2d3748; } /* gray-800 */
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
+    .dark ::-webkit-scrollbar-thumb { background: #4a5568; } /* gray-600 */
+    ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+    .dark ::-webkit-scrollbar-thumb:hover { background: #718096; } /* gray-500 */
+
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.0",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.0.1"
+  }
+}
+</script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 m-0 p-0 transition-colors duration-300 ease-in-out">
+  <div id="root" class="flex flex-col min-h-screen"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

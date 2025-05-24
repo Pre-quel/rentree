@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: rentry-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: mongodb://root:iqf8z0ZtV9RFQVbOJSYA6OJbeox5IMOFTnugb0rrmMjI7SYSl2eze5cZX2wJ0oq6@145.223.121.119:27017/?directConnection=true
+      FRONTEND_URL: http://localhost
+    ports:
+      - "3001:3001"
+    networks:
+      - rentry-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:3001/api
+    container_name: rentry-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    networks:
+      - rentry-network
+
+
+networks:
+  rentry-network:
+    driver: bridge

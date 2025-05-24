@@ -1,0 +1,5 @@
+{
+  "name": "Rentry.co Clone - Markdown Editor",
+  "description": "A React-based clone of Rentry.co, focusing on its markdown rendering capabilities and cheatsheet. Allows users to see how Rentry-specific markdown is rendered.",
+  "requestFramePermissions": []
+}

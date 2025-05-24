@@ -1,0 +1,157 @@
+
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import type { PasteData, ApiError } from '../types';
+import { generateRandomId } from './pasteStore'; // For client-side ID generation if needed
+
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const MODEL_NAME = 'gemini-2.5-flash-preview-04-17';
+
+// Helper to parse Gemini's JSON response
+const parseJsonResponse = <T>(text: string | undefined): T | null => {
+  if (!text) return null;
+  try {
+    let jsonStr = text.trim();
+    const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+    const match = jsonStr.match(fenceRegex);
+    if (match && match[2]) {
+      jsonStr = match[2].trim();
+    }
+    return JSON.parse(jsonStr) as T;
+  } catch (e) {
+    console.error("Failed to parse JSON response from Gemini:", e, "Raw text:", text);
+    // Fallback for non-JSON error messages from Gemini
+    if (text.toLowerCase().includes("not found")) {
+        return { error: { message: "Resource not found.", type: "NotFound" } } as any;
+    }
+    if (text.toLowerCase().includes("conflict") || text.toLowerCase().includes("already exists")) {
+        return { error: { message: "Conflict: Resource already exists or ID is taken.", type: "Conflict" } } as any;
+    }
+    return { error: { message: "Invalid response from server.", type: "Generic" } } as any;
+  }
+};
+
+
+export const fetchPasteFromAPI = async (urlSegment: string): Promise<PasteData | { error: ApiError }> => {
+  const prompt = `
+    Simulate an API call to fetch a paste from a MongoDB 'pastes' collection in a 'rentry' database.
+    The paste has the urlSegment: "${urlSegment}".
+    - If found, return the paste data as a JSON object. The paste object should include: _id (MongoDB ObjectId as string), id (can be same as urlSegment), urlSegment, content, editCode (if any), createdAt (timestamp), updatedAt (timestamp).
+    - If not found, return a JSON object: { "error": { "message": "Paste not found.", "type": "NotFound" } }
+    - Example of a found paste: { "_id": "randomObjectId", "id": "${urlSegment}", "urlSegment": "${urlSegment}", "content": "Some markdown content", "editCode": "secret", "createdAt": 1678886400000, "updatedAt": 1678886400000 }
+    Provide only the JSON response.
+  `;
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: { responseMimeType: "application/json" },
+    });
+    const result = parseJsonResponse<PasteData | { error: ApiError }>(response.text);
+    if (!result) return { error: { message: 'No response from server simulator.', type: 'Generic' } };
+    return result;
+  } catch (e: any) {
+    console.error("Error fetching paste from API (Gemini):", e);
+    return { error: { message: e.message || 'Failed to fetch paste.', type: 'Generic' } };
+  }
+};
+
+export const savePasteToAPI = async (
+  paste: Omit<PasteData, '_id' | 'id' | 'createdAt' | 'updatedAt'> & { urlSegment?: string, content: string, editCode?: string }
+): Promise<PasteData | { error: ApiError }> => {
+  const finalUrlSegment = paste.urlSegment || generateRandomId();
+  const idToSave = finalUrlSegment; // Use urlSegment as main ID for simplicity in client-side tracking
+
+  const prompt = `
+    Simulate an API call to save a new paste to a MongoDB 'pastes' collection in a 'rentry' database.
+    Paste data to save:
+    - urlSegment: "${finalUrlSegment}" (this should be unique)
+    - content: "${paste.content.replace(/"/g, '\\"')}"
+    - editCode: "${paste.editCode ? paste.editCode.replace(/"/g, '\\"') : ''}"
+
+    - If the urlSegment "${finalUrlSegment}" is unique and the paste is saved successfully:
+      Return the newly created paste data as a JSON object. This object should include:
+      _id (a new MongoDB ObjectId as string), id ("${idToSave}"), urlSegment ("${finalUrlSegment}"), content, editCode (if provided), 
+      createdAt (current timestamp), updatedAt (current timestamp).
+    - If the urlSegment "${finalUrlSegment}" is already taken (simulated conflict):
+      Return a JSON object: { "error": { "message": "Custom URL '${finalUrlSegment}' is already taken.", "type": "Conflict" } }
+    - For any other error, return a JSON object: { "error": { "message": "Failed to save paste.", "type": "Generic" } }
+    Provide only the JSON response.
+  `;
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: { responseMimeType: "application/json" },
+    });
+
+    const result = parseJsonResponse<PasteData | { error: ApiError }>(response.text);
+    if (!result) return { error: { message: 'No response from server simulator.', type: 'Generic' } };
+    
+    // FIX: Corrected type check for successful paste data
+    if (result && !('error' in result)) {
+        const successfulPaste = result as PasteData; // Type is now correctly PasteData
+        if (!successfulPaste._id) successfulPaste._id = generateRandomId(24); // Simulate ObjectId
+        if (!successfulPaste.id) successfulPaste.id = idToSave;
+        const now = Date.now();
+        if (!successfulPaste.createdAt) successfulPaste.createdAt = now;
+        if (!successfulPaste.updatedAt) successfulPaste.updatedAt = now;
+        return successfulPaste;
+    }
+    return result;
+
+  } catch (e: any) {
+    console.error("Error saving paste to API (Gemini):", e);
+    return { error: { message: e.message || 'Failed to save paste.', type: 'Generic' } };
+  }
+};
+
+export const updatePasteInAPI = async (
+  urlSegment: string,
+  content: string,
+  currentEditCodeAttempt?: string, // User's attempt to authenticate
+  newEditCode?: string // Optional new edit code to set
+): Promise<PasteData | { error: ApiError }> => {
+  const prompt = `
+    Simulate an API call to update an existing paste with urlSegment "${urlSegment}" in a MongoDB 'pastes' collection.
+    Update details:
+    - new content: "${content.replace(/"/g, '\\"')}"
+    - currentEditCodeAttempt (user provided to authorize edit): "${currentEditCodeAttempt || ''}"
+    - newEditCodeToSet (if user wants to change it): "${newEditCode || ''}"
+
+    Backend logic simulation:
+    1. Fetch the existing paste by urlSegment "${urlSegment}".
+    2. If paste not found, return JSON: { "error": { "message": "Paste not found.", "type": "NotFound" } }
+    3. If paste has an existing 'editCode' on record:
+       - Compare it with 'currentEditCodeAttempt'.
+       - If they don't match, return JSON: { "error": { "message": "Incorrect edit code.", "type": "Authentication" } }
+    4. If authentication passes (no existing editCode OR currentEditCodeAttempt matches existing):
+       - Update the paste's content.
+       - If 'newEditCodeToSet' is provided (even if empty string), update the paste's editCode to 'newEditCodeToSet'. An empty string means remove edit code. If 'newEditCodeToSet' is not provided (undefined), keep the existing editCode.
+       - Update the 'updatedAt' timestamp.
+       - Return the full updated paste data as JSON (including _id, id, urlSegment, content, new/existing editCode, createdAt, updatedAt).
+    Provide only the JSON response.
+  `;
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: prompt,
+      config: { responseMimeType: "application/json" },
+    });
+    const result = parseJsonResponse<PasteData | { error: ApiError }>(response.text);
+     if (!result) return { error: { message: 'No response from server simulator.', type: 'Generic' } };
+    
+    // FIX: Corrected type check for successful paste data
+    if (result && !('error' in result)) {
+        const successfulPaste = result as PasteData; // Type is now correctly PasteData
+        if (!successfulPaste.updatedAt || (successfulPaste.createdAt && successfulPaste.updatedAt < successfulPaste.createdAt)) {
+            successfulPaste.updatedAt = Date.now();
+        }
+         return successfulPaste;
+    }
+    return result;
+
+  } catch (e: any) {
+    console.error("Error updating paste in API (Gemini):", e);
+    return { error: { message: e.message || 'Failed to update paste.', type: 'Generic' } };
+  }
+};
