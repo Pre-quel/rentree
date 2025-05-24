@@ -27,7 +27,7 @@ services:
     container_name: rentry-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8899:8899"
     networks:
       - rentry-network
 
