@@ -28,6 +28,65 @@ mermaid.initialize({
   }
 });
 
+// Custom remark plugin to handle custom underline syntax !~text~! and !~color;text~!
+function remarkCustomUnderline() {
+  return (tree: any) => {
+    visit(tree, 'text', (node: any, index: any, parent: any) => {
+      const text = node.value;
+      const regex = /!~((?:[^;~]+;)?[^~]+)~!/g;
+      const matches = [...text.matchAll(regex)];
+      
+      if (matches.length > 0) {
+        const newNodes = [];
+        let lastIndex = 0;
+        
+        matches.forEach((match) => {
+          // Add text before the match
+          if (match.index! > lastIndex) {
+            newNodes.push({
+              type: 'text',
+              value: text.slice(lastIndex, match.index)
+            });
+          }
+          
+          // Parse the match
+          const content = match[1];
+          const parts = content.split(';');
+          let color = null;
+          let underlineText = content;
+          
+          if (parts.length > 1) {
+            color = parts[0];
+            underlineText = parts.slice(1).join(';');
+          }
+          
+          // Create underline node
+          const underlineNode = {
+            type: 'html',
+            value: color 
+              ? `<u style="color: ${color};">${underlineText}</u>`
+              : `<u>${underlineText}</u>`
+          };
+          
+          newNodes.push(underlineNode);
+          lastIndex = match.index! + match[0].length;
+        });
+        
+        // Add remaining text
+        if (lastIndex < text.length) {
+          newNodes.push({
+            type: 'text',
+            value: text.slice(lastIndex)
+          });
+        }
+        
+        // Replace the current node with new nodes
+        parent.children.splice(index, 1, ...newNodes);
+      }
+    });
+  };
+}
+
 // Custom remark plugin to handle [TOC] syntax
 function remarkCustomToc() {
   return (tree: any) => {
@@ -234,6 +293,7 @@ export const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => 
       prose-img:rounded prose-img:max-w-full prose-img:h-auto">
       <ReactMarkdown
         remarkPlugins={[
+          remarkCustomUnderline,
           remarkGfm,
           remarkMath,
           remarkFrontmatter,
