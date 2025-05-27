@@ -24,16 +24,10 @@ export const cheatsheetData: CheatsheetItem[] = [
     ),
   },
   {
-    typed: `!~Simple Underlined Text~!\n!~red;Underlined Text With Color~!\n!~green;double;Underlined Text Plus Style~!\n!~blue;default;line-through;Underlined Plus Type~!\n!~orange;default;default;7;Underlined Text Plus Thickness~!\n\n%violet%!~green;Combine With Text Color~!%%\n!~violet;%green%Works The Other Way Too%%~!`,
-    publishedExample: `!~Simple Underlined Text~!\n!~red;Underlined Text With Color~!\n!~green;double;Underlined Text Plus Style~!\n!~blue;default;line-through;Underlined Plus Type~!\n!~orange;default;default;7;Underlined Text Plus Thickness~!\n\n%violet%!~green;Combine With Text Color~!%%\n!~violet;%green%Works The Other Way Too%%~!`,
+    typed: `<u>Simple Underlined Text</u>`,
+    publishedExample: `<u>Simple Underlined Text</u>`,
     typedNotes: React.createElement('div', { className: 'text-gray-500' },
-      React.createElement('p', null, 'Underline tags can be given 4 options, separated by a semi-colon ;'),
-      React.createElement('ul', { className: 'list-disc list-inside ml-4' },
-        React.createElement('li', null, 'color : default | color name | #hexcode'),
-        React.createElement('li', null, 'style : default | solid (default) | double | dotted | dashed | wavy'),
-        React.createElement('li', null, 'type : default | underline (default) | line-through | overline | both'),
-        React.createElement('li', null, 'thickness : number from 1-10. Measured in pixels.')
-      )
+      React.createElement('p', null, 'Use HTML <u> tags to underline text.')
     ),
   },
   {

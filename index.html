@@ -185,6 +185,19 @@
       background-color: #451a03;
       border-color: #f59e0b;
     }
+    
+    /* Ensure underline elements don't inherit strikethrough */
+    u {
+      text-decoration: underline !important;
+      text-decoration-line: underline !important;
+      text-decoration-style: solid !important;
+    }
+    
+    /* Fix for strikethrough elements */
+    del, s, strike {
+      text-decoration: line-through !important;
+      text-decoration-line: line-through !important;
+    }
 
     /* Basic scrollbar styling for a more consistent look */
     ::-webkit-scrollbar { width: 8px; height: 8px; }

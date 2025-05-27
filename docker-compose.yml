@@ -9,7 +9,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      MONGODB_URI: mongodb://root:iqf8z0ZtV9RFQVbOJSYA6OJbeox5IMOFTnugb0rrmMjI7SSYSl2eze5cZX2wJ0oq6@145.223.121.119:27017/?directConnection=true
+      MONGODB_URI: mongodb://root:iqf8z0ZtV9RFQVbOJSYA6OJbeox5IMOFTnugb0rrmMjI7SYSl2eze5cZX2wJ0oq6@145.223.121.119:27017/?directConnection=true
       FRONTEND_URL: http://admin.hells.cat:3000
     ports:
       - "3001:3001"

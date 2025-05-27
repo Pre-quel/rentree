@@ -33,7 +33,9 @@ function remarkCustomUnderline() {
   return (tree: any) => {
     visit(tree, 'text', (node: any, index: any, parent: any) => {
       const text = node.value;
-      const regex = /!~((?:[^;~]+;)?[^~]+)~!/g;
+      // Updated regex to be more specific and avoid conflicts with GFM strikethrough
+      // This regex ensures we match !~ followed by content and ending with ~!
+      const regex = /!~([^~]+(?:~(?!!).*?)?)~!/g;
       const matches = [...text.matchAll(regex)];
       
       if (matches.length > 0) {
@@ -55,17 +57,28 @@ function remarkCustomUnderline() {
           let color = null;
           let underlineText = content;
           
-          if (parts.length > 1) {
+          if (parts.length > 1 && parts[0].match(/^[a-zA-Z#][a-zA-Z0-9#]*$/)) {
+            // Only treat first part as color if it looks like a color value
             color = parts[0];
             underlineText = parts.slice(1).join(';');
           }
+          
+          // Escape HTML in the underline text to prevent XSS
+          const escapeHtml = (str: string) => {
+            return str
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#039;');
+          };
           
           // Create underline node
           const underlineNode = {
             type: 'html',
             value: color 
-              ? `<u style="color: ${color};">${underlineText}</u>`
-              : `<u>${underlineText}</u>`
+              ? `<u style="color: ${escapeHtml(color)};">${escapeHtml(underlineText)}</u>`
+              : `<u>${escapeHtml(underlineText)}</u>`
           };
           
           newNodes.push(underlineNode);
