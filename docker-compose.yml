@@ -21,7 +21,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_BASE_URL: http://admin.hells.cat:3001/api
+        VITE_API_BASE_URL: http://api.slug.ss/api
     container_name: rentry-frontend
     ports:
          - "3000:80"
